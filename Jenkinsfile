@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_KEY')
-        AWS_REGION = 'us-east-1'
+        AWS_REGION = 'us-east-1'  // Set AWS region
+        S3_BUCKET = 'jenkins7658' // Your S3 bucket
     }
 
     stages {
@@ -14,31 +13,25 @@ pipeline {
             }
         }
 
-        stage('Install AWS CLI') {
+        stage('Validate Static Website') {
             steps {
-                script {
-                    def awsCliCheck = sh(script: 'which aws', returnStatus: true)
-                    if (awsCliCheck != 0) {
-                        echo 'AWS CLI not found. Installing...'
-                        sh 'sudo apt-get update && sudo apt-get install awscli -y'
-                    } else {
-                        echo 'AWS CLI is already installed.'
-                    }
-                }
+                echo "No build required for HTML/CSS/JS."
             }
         }
 
-        stage('Deploy to S3') {
+        stage('Deploy to AWS S3') {
             steps {
-                script {
-                    sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export AWS_REGION=$AWS_REGION
+                withAWS(credentials: 'aws-credentials-id', region: "${AWS_REGION}") {
+                    sh """
+                    if ! command -v aws &> /dev/null; then
+                        echo "Installing AWS CLI..."
+                        sudo apt-get update && sudo apt-get install awscli -y
+                    else
+                        echo "AWS CLI is already installed."
+                    fi
 
-                    aws s3 sync . s3://jenkins7658 --delete
-                    echo "Deployment Successful!"
-                    '''
+                    aws s3 sync . s3://${S3_BUCKET} --delete
+                    """
                 }
             }
         }
@@ -46,10 +39,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment completed successfully!'
+            echo "✅ Deployment Successful!"
         }
         failure {
-            echo 'Deployment failed!'
+            echo "❌ Deployment Failed!"
         }
     }
 }
