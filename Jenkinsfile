@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'  // Set AWS region
-        S3_BUCKET = 'jenkins7658' // Your S3 bucket
+        S3_BUCKET = 'jenkins7865' // Your S3 bucket
     }
 
     stages {
