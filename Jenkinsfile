@@ -2,44 +2,47 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
-        S3_BUCKET = 'jenkins7658'
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key')    // AWS Access Key (from Jenkins credentials)
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key') // AWS Secret Key (from Jenkins credentials)
+        AWS_DEFAULT_REGION = 'us-east-1'                     // Change to your AWS region
+        S3_BUCKET_NAME = 'jenkins7658'               // Replace with your S3 bucket name
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm
+                echo 'Fetching the code from repository...'
+                checkout scm // Pulls the code from your repository
             }
         }
 
-        stage('Build (Validate HTML/CSS/JS)') {
+        stage('Validate HTML & CSS') {
             steps {
-                echo 'No build required for static websites.'
+                echo 'Validating HTML and CSS...'
+                sh '''
+                # Install HTML and CSS linters (optional)
+                sudo apt-get update && sudo apt-get install -y tidy
+                tidy -errors index.html || true
+                '''
             }
         }
 
-        stage('Deploy to AWS S3') {
+        stage('Deploy to S3') {
             steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']
-                ]) {
-                    sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        aws s3 sync . s3://$S3_BUCKET --delete
-                    '''
-                }
+                echo 'Deploying website to AWS S3...'
+                sh '''
+                aws s3 sync . s3://$S3_BUCKET_NAME/ --delete
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'Deployment Successful!'
+            echo '✅ Deployment to AWS S3 was successful!'
         }
         failure {
-            echo 'Deployment Failed!'
+            echo '❌ Deployment failed. Check the logs for more information.'
         }
     }
 }
