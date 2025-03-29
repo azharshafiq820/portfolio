@@ -29,7 +29,6 @@ pipeline {
                   "AWS_DEFAULT_REGION=${AWS_REGION}"
                 ]) {
                     sh """
-                    sudo apt-get install awscli -y
                     aws s3 sync . s3://$S3_BUCKET --delete
                     """
                 }
