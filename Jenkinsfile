@@ -2,47 +2,54 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')    // AWS Access Key (from Jenkins credentials)
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key') // AWS Secret Key (from Jenkins credentials)
-        AWS_DEFAULT_REGION = 'us-east-1'                     // Change to your AWS region
-        S3_BUCKET_NAME = 'jenkins7658'               // Replace with your S3 bucket name
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_REGION = 'us-east-1'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                echo 'Fetching the code from repository...'
-                checkout scm // Pulls the code from your repository
+                checkout scm
             }
         }
 
-        stage('Validate HTML & CSS') {
+        stage('Install AWS CLI') {
             steps {
-                echo 'Validating HTML and CSS...'
-                sh '''
-                # Install HTML and CSS linters (optional)
-                sudo apt-get update && sudo apt-get install -y tidy
-                tidy -errors index.html || true
-                '''
+                script {
+                    def awsCliCheck = sh(script: 'which aws', returnStatus: true)
+                    if (awsCliCheck != 0) {
+                        echo 'AWS CLI not found. Installing...'
+                        sh 'sudo apt-get update && sudo apt-get install awscli -y'
+                    } else {
+                        echo 'AWS CLI is already installed.'
+                    }
+                }
             }
         }
 
         stage('Deploy to S3') {
             steps {
-                echo 'Deploying website to AWS S3...'
-                sh '''
-                aws s3 sync . s3://$S3_BUCKET_NAME/ --delete
-                '''
+                script {
+                    sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                    export AWS_REGION=$AWS_REGION
+
+                    aws s3 sync . s3://jenkins7658 --delete
+                    echo "Deployment Successful!"
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo '✅ Deployment to AWS S3 was successful!'
+            echo 'Deployment completed successfully!'
         }
         failure {
-            echo '❌ Deployment failed. Check the logs for more information.'
+            echo 'Deployment failed!'
         }
     }
 }
